@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+    <persistence-unit name="inventarioPU" transaction-type="JTA">
+        <jta-data-source>jdbc/pgdb</jta-data-source>
+
+        <!-- Entidades registradas para el contexto de persistencia -->
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Almacen</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Caracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Cliente</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Compra</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.CompraDetalle</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Kardex</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.KardexDetalle</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Producto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.ProductoTipoProducto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.ProductoTipoProductoCaracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Proveedor</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoAlmacen</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoProducto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoProductoCaracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoUnidadMedida</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.UnidadMedida</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Venta</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.VentaDetalle</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Almacen</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Caracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Cliente</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Compra</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.CompraDetalle</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Kardex</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.KardexDetalle</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Producto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.ProductoTipoProducto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.ProductoTipoProductoCaracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Proveedor</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoAlmacen</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoProducto</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoProductoCaracteristica</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.TipoUnidadMedida</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.UnidadMedida</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.Venta</class>
+        <class>ues.occ.edu.sv.prn335.proyectodeprogramacionv1.core.entity.VentaDetalle</class>
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/PRN_335"/>
+            <property name="jakarta.persistence.jdbc.user" value="postgres"/>
+            <property name="jakarta.persistence.jdbc.password" value="Jeffercito1#"/>
+            <property name="eclipselink.target-database" value="PostgreSQL"/>
+            <property name="eclipselink.logging.level" value="INFO"/>
+            <property name="eclipselink.weaving" value="false"/>
+            <property name="jakarta.persistence.schema-generation.database.action" value="none"/>
+        </properties>
+    </persistence-unit>
+</persistence>
