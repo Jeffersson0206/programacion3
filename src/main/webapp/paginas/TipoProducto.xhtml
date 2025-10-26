@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE html>
+<html
+        xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:h="jakarta.faces.html"
+        xmlns:p="http://primefaces.org/ui"
+        xmlns:ui="http://java.sun.com/jsf/facelets" xmlns:f="http://java.sun.com/jsf/core">
+<h:head>
+    <meta charset="UTF-8"/>
+    <h:outputStylesheet library="estilos" name="disenoTipoProducto.css"/>
+</h:head>
+<h:body>
+    <div class="page-container">
+        <ui:include src="/paginas/ues/Sidebar.xhtml"/>
+
+        <div class="container">
+            <div class="header">
+                <h1>#{msg['tipoProducto.titulo']}</h1>
+            </div>
+
+            <div class="content">
+                <!-- PANEL TABLA -->
+                <h:panelGroup id="pnlTabla" layout="block"
+                              style="display:#{tipoProductoFrm.estado eq 'NADA' ? 'block' : 'none'}">
+                    <div class="content-tabla">
+                        <h:form id="frmTop">
+                            <p:dataTable id="tablaRegistros"
+                                         lazy="true"
+                                         rendered="#{tipoProductoFrm.estado.name() == 'NADA'}"
+                                         rows="5"
+                                         paginator="true"
+                                         paginatorPosition="bottom"
+                                         value="#{tipoProductoFrm.modelo}"
+                                         var="reg"
+                                         selectionMode="single"
+                                         selection="#{tipoProductoFrm.registro}"
+                                         rowKey="#{reg.id}">
+                                <p:ajax event="rowSelect"
+                                        listener="#{tipoProductoFrm.selectionHandler}"
+                                        update=":pnlTabla :pnlDetalle"/>
+
+                                <p:column headerText="ID">
+                                    <h:outputText value="#{reg.id}" />
+                                </p:column>
+
+                                <p:column headerText="Tipo Producto Padre">
+                                    <h:outputText rendered="#{empty reg.idTipoProductoPadre}" value="(Raíz)"/>
+                                    <h:outputText rendered="#{not empty reg.idTipoProductoPadre}" value="#{reg.idTipoProductoPadre.nombre}"/>
+                                </p:column>
+
+                                <p:column headerText="Nombre">
+                                    <h:outputText value="#{reg.nombre}" />
+                                </p:column>
+
+                                <p:column headerText="Estado">
+                                    <h:outputText value="#{reg.activo?'Activo':'Inactivo'}"/>
+                                </p:column>
+
+                                <p:column headerText="Observaciones">
+                                    <h:outputText value="#{reg.comentarios}" />
+                                </p:column>
+                            </p:dataTable>
+
+                            <!-- Botón Nuevo: incluyo BotonesTop pasando bean y sección -->
+                            <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                                <ui:param name="bean" value="#{tipoProductoFrm}" />
+                                <ui:param name="section" value="nuevo"/>
+                            </ui:include>
+                        </h:form>
+                        <p:growl id="messages" showDetail="true" life="5000" sticky="false" />
+                    </div>
+                </h:panelGroup>
+
+                <!-- PANEL DETALLE -->
+                <h:panelGroup id="pnlDetalle">
+                    <!-- este form se muestra solo si estado != NADA -->
+                    <h:form id="frmCrear" rendered="#{tipoProductoFrm.estado.name() != 'NADA'}">
+                        <h:panelGrid columns="2" >
+                            <h:outputLabel for="txtIdPanel" value="ID:"/>
+                            <h:panelGroup id="txtIdPanel">
+                                <h:outputText rendered="#{empty tipoProductoFrm.registro.id}"
+                                              value="Generado automáticamente"
+                                              styleClass="id-info-text"/>
+                                <h:outputText value="#{tipoProductoFrm.registro.id}"
+                                              rendered="#{not empty tipoProductoFrm.registro.id}"
+                                              disabled="true"/>
+                            </h:panelGroup>
+
+                            <h:outputLabel for="selectTipoPadre" value="Tipo Producto Padre:"/>
+                            <p:selectOneMenu id="selectTipoPadre"
+                                             value="#{tipoProductoFrm.tipoProductoPadreSeleccionado}"
+                                             style="min-width: 14rem">
+                                <f:selectItem itemLabel="(Ninguno - Tipo Raíz)" itemValue="#{null}"/>
+                                <f:selectItems value="#{tipoProductoFrm.tiposProductoHierarchy}"/>
+                            </p:selectOneMenu>
+
+                            <h:outputLabel for="txtNombre" value="Nombre:"/>
+                            <h:inputText id="txtNombre"
+                                         value="#{tipoProductoFrm.registro.nombre}"
+                                         size="80"
+                                         required="true"
+                                         requiredMessage="El nombre es requerido"/>
+
+                            <h:outputLabel for="chkActivo" value="Activo:"/>
+                            <h:selectBooleanCheckbox id="chkActivo"
+                                                     value="#{tipoProductoFrm.registro.activo}"/>
+
+                            <h:outputLabel for="txtComentarios" value="Comentarios:"/>
+                            <h:inputText id="txtComentarios"
+                                         value="#{tipoProductoFrm.registro.comentarios}" size="80"/>
+                        </h:panelGrid>
+
+                        <!-- Botones Crear / Modificar / Eliminar: aquí dentro del form -->
+                        <h:panelGrid columns="3">
+                            <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                                <ui:param name="bean" value="#{tipoProductoFrm}" />
+                                <ui:param name="section" value="crud"/>
+                            </ui:include>
+                        </h:panelGrid>
+                    </h:form>
+
+                    <!-- Botón Cancelar: separado en su propio form -->
+                    <h:form id="frmCancelar">
+                        <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                            <ui:param name="bean" value="#{tipoProductoFrm}" />
+                            <ui:param name="section" value="cancelar"/>
+                        </ui:include>
+                    </h:form>
+                </h:panelGroup>
+            </div>
+        </div>
+    </div>
+</h:body>
+</html>

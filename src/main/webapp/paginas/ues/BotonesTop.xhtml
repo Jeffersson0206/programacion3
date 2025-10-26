@@ -1,0 +1,47 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:ui="http://java.sun.com/jsf/facelets">
+
+    <!-- Sección Nuevo -->
+    <ui:fragment rendered="#{section == 'nuevo'}">
+        <p:commandButton id="btnNuevo" value="#{msg['boton.nuevo']}"
+                         rendered="#{bean.estado == 'NADA' or bean.estado.name() == 'NADA'}"
+                         styleClass="btn-nuevo"
+                         actionListener="#{bean.btnNuevoHandler}"
+                         update=":pnlDetalle :pnlTabla"/>
+    </ui:fragment>
+
+    <!-- Sección Crear / Modificar / Eliminar -->
+    <ui:fragment rendered="#{section == 'crud'}">
+        <!-- Boton Crear o Guardar-->
+        <p:commandButton value="#{msg['boton.crear']}"
+                         actionListener="#{bean.btnGuardarHandler}"
+                         rendered="#{bean.estado == 'CREAR' or bean.estado.name() == 'CREAR'}"
+                         styleClass="btn-crear"
+                         update="messages :pnlDetalle :pnlTabla"
+                         process="@form"/>
+        <!-- boton modificar-->
+        <p:commandButton value="#{msg['boton.modificar']}"
+                         actionListener="#{bean.btnModificarHandler}"
+                         rendered="#{bean.estado == 'MODIFICAR' or bean.estado.name() == 'MODIFICAR'}"
+                         styleClass="btn-modificar"
+                         update="messages :pnlDetalle :pnlTabla"
+                         process="@form"/>
+        <!-- boton eliminar-->
+        <p:commandButton value="#{msg['boton.eliminar']}"
+                         actionListener="#{bean.btnEliminarHandler}"
+                         rendered="#{bean.estado == 'MODIFICAR' or bean.estado.name() == 'MODIFICAR'}"
+                         styleClass="btn-eliminar"
+                         update="messages :pnlDetalle :pnlTabla"/>
+    </ui:fragment>
+
+    <!-- Sección Cancelar -->
+    <ui:fragment rendered="#{section == 'cancelar'}">
+        <p:commandButton value="#{msg['boton.cancelar']}"
+                         actionListener="#{bean.btnCancelarHandler}"
+                         rendered="#{bean.estado != 'NADA' and bean.estado.name() != 'NADA'}"
+                         styleClass="btn-cancelar"
+                         update=":pnlDetalle :pnlTabla"
+                         style="margin-top:-60px; margin-left:900px; vertical-align:middle;"/>
+    </ui:fragment>
+</ui:composition>

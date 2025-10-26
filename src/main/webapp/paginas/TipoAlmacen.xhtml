@@ -1,109 +1,120 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:h="http://xmlns.jcp.org/jsf/html"
-      xmlns:f="http://xmlns.jcp.org/jsf/core">
-<head>
+<html
+        xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:h="jakarta.faces.html"
+        xmlns:p="http://primefaces.org/ui"
+        xmlns:ui="http://java.sun.com/jsf/facelets">
+<h:head>
     <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Tipo de Almacén</title>
-    <link rel="stylesheet" type="text/css" href="#{request.contextPath}/resources/estilos/disenoAlmacen.css" />
-</head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>#{tipoAlmacenFrm.nombreBean}</h1>
-    </div>
+    <title>#{msg['tipoAlmacen.titulo']}</title>
+    <h:outputStylesheet library="estilos" name="disenoTipoProducto.css"/>
+</h:head>
+<h:body>
 
-    <div class="content">
-        <!-- Formulario principal con AJAX para evitar recarga completa -->
-        <h:form id="frmPrincipal">
-            <h:panelGroup id="panelCompleto">
+    <div class="page-container">
+        <ui:include src="/paginas/ues/Sidebar.xhtml"/>
 
-                <!-- Tabla que muestra todos los registros existentes -->
-                <h:dataTable value="#{tipoAlmacenFrm.listaTipoAlmacen}" var="r" styleClass="data-table">
-                    <h:column>
-                        <f:facet name="header">ID</f:facet>
-                        #{r.id}
-                    </h:column>
-                    <h:column>
-                        <f:facet name="header">Nombre</f:facet>
-                        #{r.nombre}
-                    </h:column>
-                    <h:column>
-                        <f:facet name="header">Estado</f:facet>
-                        <span class="badge #{r.activo ? 'badge-activo' : 'badge-inactivo'}">
-                            #{r.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                    </h:column>
-                    <h:column>
-                        <f:facet name="header">Observaciones</f:facet>
-                        #{r.obsevaciones != null ? r.obsevaciones.toUpperCase() : ''}
-                    </h:column>
+        <div class="container">
+            <div class="header">
+                <h1>#{msg['tipoAlmacen.titulo']}</h1>
+            </div>
 
-                    <h:column>
-                        <f:facet name="header">Acciones</f:facet>
-                        <!-- Botón para eliminar un registro con confirmación -->
-                        <h:commandButton value="Eliminar"
-                                         actionListener="#{tipoAlmacenFrm.btnEliminarHandler(r)}"
-                                         styleClass="btn-eliminar"
-                                         onclick="return confirm('¿Está seguro que desea eliminar este registro?');">
-                            <f:ajax execute="@this" render="panelCompleto" />
-                        </h:commandButton>
-                    </h:column>
-                </h:dataTable>
+            <div class="content">
+                <!-- PANEL TABLA -->
+                <h:panelGroup id="pnlTabla" layout="block"
+                              style="display:#{tipoAlmacenFrm.estado eq 'NADA' ? 'block' : 'none'}">
+                    <div class="content-tabla">
+                        <h:form id="frmTop">
+                            <p:dataTable id="tabla-top"
+                                         lazy="true"
+                                         rendered="#{tipoAlmacenFrm.estado == 'NADA'}"
+                                         rows="5"
+                                         paginator="true"
+                                         paginatorPosition="bottom"
+                                         value="#{tipoAlmacenFrm.modelo}"
+                                         var="reg"
+                                         selectionMode="single"
+                                         selection="#{tipoAlmacenFrm.registro}"
+                                         rowKey="#{reg.id}">
+                                <p:ajax event="rowSelect"
+                                        listener="#{tipoAlmacenFrm.selectionHandler}"
+                                        update=":pnlTabla :pnlDetalle"/>
 
-                <!-- Botón para mostrar el formulario de creación -->
-                <h:commandButton value="Nuevo" actionListener="#{tipoAlmacenFrm.btnNuevoHandler}"
-                                 styleClass="btn-submit btn-nuevo">
-                    <f:ajax execute="@this" render="panelCompleto" />
-                </h:commandButton>
+                                <p:column headerText="#{msg['tipoAlmacen.tabla.id']}">
+                                    <h:outputText value="#{reg.id}"/>
+                                </p:column>
+                                <p:column headerText="#{msg['tipoAlmacen.tabla.nombre']}">
+                                    <h:outputText value="#{reg.nombre}"/>
+                                </p:column>
+                                <p:column headerText="#{msg['tipoAlmacen.tabla.estado']}">
+                                    <h:outputText value="#{reg.activo ? msg['tipoAlmacen.estado.activo'] : msg['tipoAlmacen.estado.inactivo']}"/>
+                                </p:column>
+                                <p:column headerText="#{msg['tipoAlmacen.tabla.observaciones']}">
+                                    <h:outputText value="#{reg.obsevaciones}"/>
+                                </p:column>
+                            </p:dataTable>
 
-                <!-- Sección del formulario para crear un nuevo registro -->
-                <h:panelGroup rendered="#{tipoAlmacenFrm.mostrarFormulario}">
-                    <div class="form-section">
-                        <h2>Nuevo Tipo de Almacén</h2>
+                            <!-- Botón Nuevo -->
+                            <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                                <ui:param name="section" value="nuevo"/>
+                                <ui:param name="bean" value="#{tipoAlmacenFrm}"/>
+                            </ui:include>
+                        </h:form>
 
-                        <!-- Muestra mensajes de validación o éxito -->
-                        <h:messages styleClass="error-message" />
-
-                        <div class="form-grid">
-                            <!-- Campo informativo del próximo ID sugerido -->
-                            <div class="form-group">
-                                <h:outputLabel for="lblProximoId" value="ID (Asignado automáticamente):" />
-                                <h:outputText id="lblProximoId" value="#{tipoAlmacenFrm.proximoId}"
-                                              styleClass="form-control-readonly" />
-                            </div>
-
-                            <!-- Campo obligatorio para el nombre del tipo de almacén -->
-                            <div class="form-group">
-                                <h:outputLabel for="txtNombre" value="Nombre:" />
-                                <h:inputText id="txtNombre" value="#{tipoAlmacenFrm.registro.nombre}"
-                                             size="75" styleClass="form-control" required="true"
-                                             requiredMessage="El nombre es obligatorio"/>
-                            </div>
-
-                            <!-- Campo opcional para observaciones -->
-                            <div class="form-group">
-                                <h:outputLabel for="txtObservaciones" value="Observaciones:" />
-                                <h:inputText id="txtObservaciones" value="#{tipoAlmacenFrm.registro.obsevaciones}"
-                                             size="75" styleClass="form-control" required="false"/>
-
-                            </div>
-                        </div>
-
-                        <!-- Botón para guardar el nuevo registro -->
-                        <h:commandButton value="Crear" actionListener="#{tipoAlmacenFrm.btnGuardarHandler}"
-                                         styleClass="btn-submit">
-                            <f:ajax execute="@form" render="panelCompleto" />
-                        </h:commandButton>
+                        <p:growl id="messages" showDetail="true" life="5000" sticky="false"/>
                     </div>
                 </h:panelGroup>
-            </h:panelGroup>
-        </h:form>
+
+                <!-- PANEL DETALLE -->
+                <h:panelGroup id="pnlDetalle" >
+                    <h:form id="frmCrear" rendered="#{tipoAlmacenFrm.estado != 'NADA'}">
+                        <h:panelGrid columns="2">
+                            <h:outputLabel for="txtIdPanel" value="#{msg['tipoAlmacen.tabla.id']}:"/>
+                            <h:panelGroup id="txtIdPanel">
+                                <h:outputText rendered="#{empty tipoAlmacenFrm.registro.id}"
+                                              value="#{msg['tipoAlmacen.id.autogenerado']}"
+                                              styleClass="id-info-text"/>
+                                <h:outputText value="#{tipoAlmacenFrm.registro.id}"
+                                              rendered="#{not empty tipoAlmacenFrm.registro.id}"
+                                              disabled="true"/>
+                            </h:panelGroup>
+
+                            <h:outputLabel for="txtNombre" value="#{msg['tipoAlmacen.form.nombre']}"/>
+                            <h:inputText id="txtNombre"
+                                         value="#{tipoAlmacenFrm.registro.nombre}"
+                                         required="true"
+                                         size="80"
+                                         requiredMessage="#{msg['tipoAlmacen.nombre.requerido']}"/>
+
+                            <h:outputLabel for="chkActivo" value="#{msg['tipoAlmacen.form.activo']}"/>
+                            <h:selectBooleanCheckbox id="chkActivo"
+                                                     value="#{tipoAlmacenFrm.registro.activo}"/>
+
+                            <h:outputLabel for="txtObservaciones" value="#{msg['tipoAlmacen.form.observaciones']}"/>
+                            <h:inputText id="txtObservaciones"
+                                         value="#{tipoAlmacenFrm.registro.observaciones}"
+                                         size="80"/>
+                        </h:panelGrid>
+
+                        <!-- Botones Crear / Modificar / Eliminar -->
+                        <h:panelGrid columns="3">
+                            <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                                <ui:param name="section" value="crud"/>
+                                <ui:param name="bean" value="#{tipoAlmacenFrm}"/>
+                            </ui:include>
+                        </h:panelGrid>
+                    </h:form>
+
+                    <!-- Botón Cancelar -->
+                    <h:form id="frmCancelar">
+                        <ui:include src="/paginas/ues/BotonesTop.xhtml">
+                            <ui:param name="section" value="cancelar"/>
+                            <ui:param name="bean" value="#{tipoAlmacenFrm}"/>
+                        </ui:include>
+                    </h:form>
+                </h:panelGroup>
+            </div>
+        </div>
     </div>
-</div>
-
-
-
-</body>
+</h:body>
 </html>

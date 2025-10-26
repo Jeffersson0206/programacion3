@@ -8,6 +8,6 @@ public interface InventarioDAOInterface <T>{
     List<T> findRange(int first, int max) throws IllegalArgumentException;
     void modificar(T registro) throws IllegalArgumentException;
     void eliminar(T registro) throws IllegalArgumentException, IllegalAccessException;
-
+    public T  buscarPorId(Integer id) throws IllegalArgumentException;
 }
 

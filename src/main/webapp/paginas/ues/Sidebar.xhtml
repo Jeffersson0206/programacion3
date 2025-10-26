@@ -1,0 +1,28 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:ui="http://java.sun.com/jsf/facelets">
+
+    <f:view locale="#{idiomaBean.locale}">
+        <div class="sidebar">
+            <!-- Selector de idioma con dropdown -->
+            <h:form class="language-selector">
+                <p:selectOneMenu value="#{idiomaBean.idioma}"
+                                 styleClass="idioma-dropdown">
+                    <f:selectItem itemLabel= "#{msg['idioma.espanol']}" itemValue="es" />
+                    <f:selectItem itemLabel="#{msg['idioma.ingles']}" itemValue="en" />
+                    <p:ajax listener="#{idiomaBean.cambiarIdioma(idiomaBean.idioma)}"
+                            update="@all" />
+                </p:selectOneMenu>
+            </h:form>
+
+            <h2>#{msg['sidebar.titulo']}</h2>
+            <ul>
+                <li><h:link value="#{msg['sidebar.tipoAlmacen']}" outcome="/paginas/TipoAlmacen.jsf"/></li>
+                <li><h:link value="#{msg['sidebar.tipoProducto']}" outcome="/paginas/TipoProducto.jsf"/></li>
+            </ul>
+        </div>
+    </f:view>
+
+</ui:composition>

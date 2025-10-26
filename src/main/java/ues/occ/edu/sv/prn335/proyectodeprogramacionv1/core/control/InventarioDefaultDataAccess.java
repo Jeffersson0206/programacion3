@@ -56,11 +56,6 @@ public abstract class InventarioDefaultDataAccess<T> implements InventarioDAOInt
         }
     }
 
-    public String imprimirCarnet() {
-        String carnet = "JR24001";
-        return carnet;
-    }
-
     public void crear(T registro) throws IllegalArgumentException, IllegalAccessException {
         if (registro == null) {
             throw new IllegalArgumentException("El registro no puede ser nulo");
@@ -106,6 +101,41 @@ public abstract class InventarioDefaultDataAccess<T> implements InventarioDAOInt
             em.remove(managedEntity);
         } catch (Exception ex) {
             throw new IllegalStateException("Error al eliminar el registro", ex);
+        }
+    }
+    public T buscarPorId(Integer id) throws IllegalArgumentException{
+        if (id != null){
+            try{
+                EntityManager em = getEntityManager();
+                if(em == null){
+                    throw new IllegalStateException("EntityManager no disponible");
+                }else{
+                    return em.find(entityClass, id);
+                }
+
+            }catch (Exception ex){
+                throw new IllegalStateException("Error al buscar el registro por ID", ex);
+            }
+        }else{
+            throw new IllegalArgumentException("El ID no puede ser nulo");
+        }
+
+    }
+    public List<T> findAll() throws IllegalArgumentException {
+        try {
+            EntityManager em = getEntityManager();
+            if (em == null) {
+                throw new IllegalStateException("EntityManager no disponible");
+            }
+
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<T> cq = cb.createQuery(entityClass);
+            Root<T> root = cq.from(entityClass);
+            cq.select(root);
+            TypedQuery<T> query = em.createQuery(cq);
+            return query.getResultList();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Error al acceder a todos los registros", ex);
         }
     }
 
