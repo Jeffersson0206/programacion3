@@ -128,7 +128,7 @@
                 <artifactId>liberty-maven-plugin</artifactId>
                 <version>3.8.2</version>
                 <configuration>
-                    <installDirectory>/home/magokike/Documentos/DevTools/openliberty2/wlp10_24_0_0_8</installDirectory>
+                    <installDirectory>/home/jefferesquivel/Descargas/openliberty-jakartaee10-25.0.0.81/wlp</installDirectory>
                     <serverName>prn335_2025</serverName>
                 </configuration>
             </plugin>

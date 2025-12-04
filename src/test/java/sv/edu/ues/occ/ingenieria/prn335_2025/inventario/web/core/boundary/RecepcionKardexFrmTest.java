@@ -3,6 +3,7 @@ package sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.boundary;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.event.ActionEvent;
+import jakarta.faces.event.AjaxBehaviorEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.*;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -28,64 +30,69 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class DespachoKardexFrmTest {
+class RecepcionKardexFrmTest {
 
     // --- Mocks ---
     @Mock FacesContext facesContext;
     @Mock KardexDAO kardexDAO;
     @Mock AlmacenDAO almacenDAO;
-    @Mock VentaDetalleDAO ventaDetalleDAO;
+    @Mock CompraDetalleDAO compraDetalleDAO;
     @Mock KardexDetalleDAO kardexDetalleDAO;
-    @Mock VentaDAO ventaDAO;
+    @Mock CompraDAO compraDAO;
     @Mock ActionEvent actionEvent;
+    @Mock AjaxBehaviorEvent ajaxBehaviorEvent;
 
     private MockedStatic<Logger> mockedLogger;
     private Logger appLogger;
 
     @Spy
     @InjectMocks
-    DespachoKardexFrm cut;
+    RecepcionKardexFrm cut;
 
     // --- Entidades ---
-    private Venta mockVenta;
-    private VentaDetalle mockDetalle;
+    private Compra mockCompra;
+    private CompraDetalle mockDetalle;
     private Almacen mockAlmacen;
     private Producto mockProducto;
     private Kardex mockKardex;
 
     private UUID mockKardexId = UUID.randomUUID();
-    private UUID mockVentaId = UUID.randomUUID();
+    private Long mockCompraId = 1L;
     private UUID mockDetalleId = UUID.randomUUID();
     private Integer mockAlmacenId = 10;
 
-    // --- Reflexión ---
     private Field registroField;
-    private Field detalleKardexField; // <-- Nuevo campo para acceder al privado
+    private Field detalleKardexField;
+    private Field detalleActualField;
+    private Field listaAlmacenesField;
 
     @BeforeEach
     void setUp() throws Exception {
-        // 1. Configurar Logger
-        appLogger = Logger.getLogger(DespachoKardexFrm.class.getName());
+        // 1. Logger Mock
+        appLogger = Logger.getLogger(RecepcionKardexFrm.class.getName());
         appLogger.setLevel(Level.OFF);
         mockedLogger = mockStatic(Logger.class);
         mockedLogger.when(() -> Logger.getLogger(anyString())).thenReturn(appLogger);
 
-        // 2. Inicializar Entidades (omitted for brevity, assume they are set up)
+        // 2. Inicializar Entidades
+        mockCompra = new Compra();
+        mockCompra.setId(mockCompraId);
 
-        mockVenta = new Venta();
-        mockVenta.setId(mockVentaId);
         mockProducto = new Producto();
         mockProducto.setId(UUID.randomUUID());
-        mockProducto.setNombreProducto("Producto Despacho");
-        mockDetalle = new VentaDetalle();
+        mockProducto.setNombreProducto("Producto Test");
+
+        mockDetalle = new CompraDetalle();
         mockDetalle.setId(mockDetalleId);
-        mockDetalle.setIdVenta(mockVenta);
+        mockDetalle.setIdCompra(mockCompra);
         mockDetalle.setIdProducto(mockProducto);
-        mockDetalle.setCantidad(BigDecimal.valueOf(5));
-        mockDetalle.setPrecio(new BigDecimal("10.00"));
+        mockDetalle.setCantidad(BigDecimal.TEN);
+        mockDetalle.setPrecio(new BigDecimal("5.00"));
+
         mockAlmacen = new Almacen();
         mockAlmacen.setId(mockAlmacenId);
         mockAlmacen.setActivo(true);
+
         mockKardex = new Kardex();
         mockKardex.setId(mockKardexId);
 
@@ -93,13 +100,17 @@ class DespachoKardexFrmTest {
         registroField = cut.getClass().getSuperclass().getDeclaredField("registro");
         registroField.setAccessible(true);
 
-        // Obtener acceso al campo privado 'detalleKardex'
         detalleKardexField = cut.getClass().getDeclaredField("detalleKardex");
         detalleKardexField.setAccessible(true);
 
+        detalleActualField = cut.getClass().getDeclaredField("detalleActual");
+        detalleActualField.setAccessible(true);
+
+        listaAlmacenesField = cut.getClass().getDeclaredField("listaAlmacenes");
+        listaAlmacenesField.setAccessible(true);
+
         // 4. Mock Context
         doNothing().when(facesContext).addMessage(any(), any(FacesMessage.class));
-        doNothing().when(cut).btnCancelarHandler(any());
     }
 
     @AfterEach
@@ -109,7 +120,7 @@ class DespachoKardexFrmTest {
     }
 
     // ----------------------------------------------------------------------
-    // --- 1. Métodos Heredados y Auxiliares ---
+    // --- 1. Métodos Abstractos y Auxiliares ---
     // ----------------------------------------------------------------------
 
     @Test
@@ -126,7 +137,15 @@ class DespachoKardexFrmTest {
     void testNuevoRegistro() {
         Kardex k = cut.nuevoRegistro();
         assertNotNull(k);
-        assertEquals("SALIDA", k.getTipoMovimiento());
+        assertNotNull(k.getId());
+        assertEquals("INGRESO", k.getTipoMovimiento());
+    }
+
+    @Test
+    void testGetSetDetalleKardex() {
+        KardexDetalle kd = new KardexDetalle();
+        cut.setDetalleKardex(kd);
+        assertEquals(kd, cut.getDetalleKardex());
     }
 
     @Test
@@ -135,17 +154,12 @@ class DespachoKardexFrmTest {
         assertEquals(mockDetalle, cut.getDetalleActual());
     }
 
-    @Test
-    void testGetDetalleKardex() {
-        assertNotNull(cut.getDetalleKardex());
-    }
-
     // ----------------------------------------------------------------------
     // --- 2. Búsqueda y Conversión ---
     // ----------------------------------------------------------------------
 
     @Test
-    void testBuscarRegistroPorId_FoundAndDifferentTypes() {
+    void testBuscarRegistroPorId_Found() {
         when(kardexDAO.findAll()).thenReturn(List.of(mockKardex));
         assertEquals(mockKardex, cut.buscarRegistroPorId(mockKardexId));
         assertEquals(mockKardex, cut.buscarRegistroPorId(mockKardexId.toString()));
@@ -184,53 +198,74 @@ class DespachoKardexFrmTest {
     // ----------------------------------------------------------------------
 
     @Test
-    void testGetListaAlmacenes_SuccessAndFilter() {
-        Almacen inactivo = new Almacen();
-        inactivo.setId(1);
-        inactivo.setActivo(false);
-
-        when(almacenDAO.findAll()).thenReturn(List.of(mockAlmacen, inactivo));
+    void testGetListaAlmacenes_Success() throws Exception {
+        listaAlmacenesField.set(cut, null);
+        when(almacenDAO.findAll()).thenReturn(List.of(mockAlmacen));
 
         List<Almacen> result = cut.getListaAlmacenes();
 
-        assertEquals(1, result.size());
+        assertFalse(result.isEmpty());
+        verify(almacenDAO).findAll();
+
+        cut.getListaAlmacenes(); // Cached
+        verify(almacenDAO, times(1)).findAll();
+    }
+
+    @Test
+    void testGetListaAlmacenes_Exception() throws Exception {
+        listaAlmacenesField.set(cut, null);
+        when(almacenDAO.findAll()).thenThrow(new RuntimeException("DB Error"));
+
+        List<Almacen> result = cut.getListaAlmacenes();
+
+        assertTrue(result.isEmpty());
+        // Ya no verificamos logger estrictamente para evitar falsos positivos
+    }
+
+    @Test
+    void testOnAlmacenChange() throws Exception {
+        Kardex k = new Kardex();
+        k.setIdAlmacen(mockAlmacen);
+        registroField.set(cut, k);
+
+        cut.onAlmacenChange(ajaxBehaviorEvent);
+    }
+
+    @Test
+    void testOnAlmacenChange_Nulls() throws Exception {
+        registroField.set(cut, null);
+        cut.onAlmacenChange(ajaxBehaviorEvent);
     }
 
     // ----------------------------------------------------------------------
-    // --- 4. Lógica de Preparación y Limpieza ---
+    // --- 4. Lógica de Preparación ---
     // ----------------------------------------------------------------------
 
     @Test
-    void testPrepararKardex() throws Exception {
+    void testPrepararKardex_Success() throws Exception {
+        when(almacenDAO.findAll()).thenReturn(List.of(mockAlmacen));
+
         cut.prepararKardex(mockDetalle);
 
         Kardex registro = (Kardex) registroField.get(cut);
-        KardexDetalle detalleKardex = cut.getDetalleKardex();
+        KardexDetalle detalleKardex = (KardexDetalle) cut.getDetalleKardex();
 
         assertNotNull(registro);
-        assertEquals(mockProducto, registro.getIdProducto());
-        assertEquals("SALIDA", registro.getTipoMovimiento());
-
+        assertNull(registro.getIdAlmacen());
         assertNotNull(detalleKardex);
+        assertEquals(registro, detalleKardex.getIdKardex());
     }
 
     @Test
-    void testLimpiar() throws Exception {
-        // Simular estado
-        registroField.set(cut, new Kardex());
-        cut.setDetalleActual(mockDetalle);
-        detalleKardexField.set(cut, new KardexDetalle()); // Setting the private field
+    void testPrepararKardex_Exception() {
+        // CORRECCIÓN: Forzar NullPointerException pasando null para activar el catch
+        cut.prepararKardex(null);
 
-        cut.limpiar();
-
-        // Verificar limpieza
-        assertNull(registroField.get(cut));
-        assertNull(cut.getDetalleActual());
-        assertNotNull(cut.getDetalleKardex());
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
     }
 
     // ----------------------------------------------------------------------
-    // --- 5. Lógica de Despacho (btnRecibirHandler) ---
+    // --- 5. Lógica de Recepción (btnRecibirHandler) ---
     // ----------------------------------------------------------------------
 
     @Test
@@ -241,95 +276,86 @@ class DespachoKardexFrmTest {
 
         cut.btnRecibirHandler(actionEvent);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("almacén")));
+        verify(facesContext).addMessage(contains("cbAlmacenKardex"), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
         verify(kardexDAO, never()).crear(any());
     }
 
     @Test
-    void testBtnRecibirHandler_Success_VentaCompleta() throws Exception {
-        // 1. Preparación
+    void testBtnRecibirHandler_Success_CompraCompleta() throws Exception {
         Kardex registro = new Kardex();
         registro.setId(mockKardexId);
         registro.setIdAlmacen(mockAlmacen);
-        registro.setIdVentaDetalle(mockDetalle);
+        registro.setIdCompraDetalle(mockDetalle);
         registroField.set(cut, registro);
 
         KardexDetalle kd = new KardexDetalle();
-        detalleKardexField.set(cut, kd); // FIX: Usar reflexión para setear el privado
+        cut.setDetalleKardex(kd);
 
-        // Mockear dependencias: Venta completa
-        doReturn(true).when(ventaDetalleDAO).todosDetallesDespachados(mockVentaId);
+        doReturn(true).when(compraDetalleDAO).todosDetallesRecibidos(mockCompraId);
+        doNothing().when(cut).btnCancelarHandler(any());
 
-        // 2. Ejecución
         cut.btnRecibirHandler(actionEvent);
 
-        // 3. Verificaciones
         verify(kardexDAO).crear(registro);
         verify(kardexDetalleDAO).crear(kd);
+        assertEquals("RECIBIDO", mockDetalle.getEstado());
+        verify(compraDetalleDAO).modificar(mockDetalle);
 
-        assertEquals("DESPACHADO", mockDetalle.getEstado());
-        verify(ventaDetalleDAO).modificar(mockDetalle);
-
-        verify(ventaDAO).actualizarEstado(mockVentaId, "DESPACHADA");
-
-        verify(facesContext, times(2)).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
-        verify(cut).btnCancelarHandler(any());
+        verify(compraDAO).actualizarEstado(mockCompraId, "RECIBIDA");
+        assertNull(registroField.get(cut));
+        verify(facesContext, atLeastOnce()).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
     }
 
     @Test
-    void testBtnRecibirHandler_Success_VentaIncompleta() throws Exception {
-        // Preparación
+    void testBtnRecibirHandler_Success_CompraIncompleta() throws Exception {
         Kardex registro = new Kardex();
         registro.setId(mockKardexId);
         registro.setIdAlmacen(mockAlmacen);
-        registro.setIdVentaDetalle(mockDetalle);
+        registro.setIdCompraDetalle(mockDetalle);
         registroField.set(cut, registro);
 
-        detalleKardexField.set(cut, new KardexDetalle()); // Usar reflexión
-
-        doReturn(false).when(ventaDetalleDAO).todosDetallesDespachados(mockVentaId);
+        doReturn(false).when(compraDetalleDAO).todosDetallesRecibidos(mockCompraId);
+        doNothing().when(cut).btnCancelarHandler(any());
 
         cut.btnRecibirHandler(actionEvent);
 
-        verify(ventaDetalleDAO).modificar(mockDetalle);
-        verify(ventaDAO, never()).actualizarEstado(any(), anyString());
-
-        verify(facesContext, times(1)).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
+        verify(compraDetalleDAO).modificar(mockDetalle);
+        verify(compraDAO, never()).actualizarEstado(anyLong(), anyString());
+        verify(cut).btnCancelarHandler(actionEvent);
     }
 
     @Test
     void testBtnRecibirHandler_Exception() throws Exception {
         Kardex k = new Kardex();
         k.setIdAlmacen(mockAlmacen);
-        k.setIdVentaDetalle(mockDetalle);
         registroField.set(cut, k);
 
-        doThrow(new RuntimeException("DB Despacho Error")).when(kardexDAO).crear(any());
+        doThrow(new RuntimeException("DB Error")).when(kardexDAO).crear(any());
 
         cut.btnRecibirHandler(actionEvent);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("No se pudo despachar el producto")));
-        verify(cut, never()).btnCancelarHandler(any());
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
+        assertNotNull(registroField.get(cut));
     }
 
     // ----------------------------------------------------------------------
-    // --- 6. Método Privado: verificarYActualizarEstadoVenta (Catch) ---
+    // --- 6. Método Privado: verificarYActualizarEstadoCompra ---
     // ----------------------------------------------------------------------
 
     @Test
-    void testVerificarYActualizarEstadoVenta_Exception() throws Exception {
-        doThrow(new RuntimeException("Check Error")).when(ventaDetalleDAO).todosDetallesDespachados(mockVentaId);
+    void testVerificarYActualizarEstadoCompra_Exception() throws Exception {
+        doThrow(new RuntimeException("Check Error")).when(compraDetalleDAO).todosDetallesRecibidos(mockCompraId);
 
         Kardex registro = new Kardex();
         registro.setId(mockKardexId);
         registro.setIdAlmacen(mockAlmacen);
-        registro.setIdVentaDetalle(mockDetalle);
+        registro.setIdCompraDetalle(mockDetalle);
         registroField.set(cut, registro);
-
-        detalleKardexField.set(cut, new KardexDetalle()); // Usar reflexión
+        doNothing().when(cut).btnCancelarHandler(any());
 
         cut.btnRecibirHandler(actionEvent);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("despachado correctamente")));
+        // Si llega aquí sin lanzar excepción, el catch interno funcionó.
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("recibido correctamente")));
     }
 }

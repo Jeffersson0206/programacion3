@@ -2,22 +2,23 @@ package sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.boundary;
 
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
-import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.CompraDAO;
-import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.NotificadorKardex;
-import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.ProveedorDAO;
-import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Compra;
-import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Proveedor;
+import jakarta.faces.event.ActionEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.*;
+import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Compra;
+import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Proveedor;
 
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,248 +28,390 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CompraFrmTest {
 
-    @Mock
-    CompraDAO compraDao;
+    // --- Mocks ---
+    @Mock CompraDetalleDAO compraDetalleDAO;
+    @Mock CompraDAO compraDao;
+    @Mock ProveedorDAO proveedorDao;
+    @Mock NotificadorKardex notificadorKardex;
+    @Mock FacesContext facesContext;
+    @Mock ActionEvent actionEvent;
 
-    @Mock
-    ProveedorDAO proveedorDao;
+    // Configuración para silenciar el Logger
+    private MockedStatic<FacesContext> mockedFacesContext;
+    private MockedStatic<Logger> mockedLogger;
+    private Logger appLogger;
 
-    @Mock
-    FacesContext facesContext;
-
-    @Mock
-    NotificadorKardex notificadorKardex;
-
+    @Spy
     @InjectMocks
     CompraFrm cut;
 
-    private MockedStatic<FacesContext> mockedFacesContext;
+    // --- Entidades y IDs ---
     private Compra mockCompra;
+    private Long mockCompraId = 1L;
+    private Integer mockProveedorId = 50;
     private Proveedor mockProveedor;
-    private Level originalLogLevel;
+
+    // --- Reflexión para acceder a campos protegidos/privados ---
+    private Field estadoField;
+    private Field registroField;
+    private Field proveedoresDisponiblesField;
 
     @BeforeEach
-    void setUp() {
-        // Silenciador de Logger para esta clase
-        Logger appLogger = Logger.getLogger(CompraFrm.class.getName());
-        originalLogLevel = appLogger.getLevel();
-        appLogger.setLevel(Level.OFF);
-
+    void setUp() throws Exception {
+        // Mock FacesContext
         mockedFacesContext = mockStatic(FacesContext.class);
         mockedFacesContext.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+        doNothing().when(facesContext).addMessage(any(), any(FacesMessage.class));
 
+        // Configurar Logger para silenciar la salida
+        appLogger = Logger.getLogger(CompraFrm.class.getName());
+        appLogger.setLevel(Level.OFF);
+        mockedLogger = mockStatic(Logger.class);
+        mockedLogger.when(() -> Logger.getLogger(anyString())).thenReturn(appLogger);
+
+        // Inicializar Entidades
         mockProveedor = new Proveedor();
-        mockProveedor.setId(10);
+        mockProveedor.setId(mockProveedorId);
         mockProveedor.setNombre("Proveedor Test");
 
         mockCompra = new Compra();
-        mockCompra.setId(1L);
+        mockCompra.setId(mockCompraId);
         mockCompra.setFecha(OffsetDateTime.now());
-        mockCompra.setEstado("CREADO");
-        mockCompra.setIdProveedor(10);
+        mockCompra.setEstado(EstadoCompra.CREADA.name());
+        mockCompra.setIdProveedor(mockProveedorId);
+        mockCompra.setProveedor(mockProveedor);
 
-        cut.registro = mockCompra;
+        // 3. Reflexión
+        estadoField = DefaultFrm.class.getDeclaredField("estado");
+        estadoField.setAccessible(true);
+        registroField = DefaultFrm.class.getDeclaredField("registro");
+        registroField.setAccessible(true);
+        proveedoresDisponiblesField = CompraFrm.class.getDeclaredField("proveedoresDisponibles");
+        proveedoresDisponiblesField.setAccessible(true);
     }
 
     @AfterEach
     void tearDown() {
-        if (originalLogLevel != null) {
-            Logger.getLogger(CompraFrm.class.getName()).setLevel(originalLogLevel);
-        } else {
-            Logger.getLogger(CompraFrm.class.getName()).setLevel(Level.INFO);
-        }
+        if (mockedFacesContext != null) mockedFacesContext.close();
+        if (mockedLogger != null) mockedLogger.close();
+    }
 
-        if (mockedFacesContext != null) {
-            mockedFacesContext.close();
-        }
+    // ----------------------------------------------------------------------
+    // --- 1. Métodos Heredados y Auxiliares ---
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testGetFacesContext() {
+        assertEquals(facesContext, cut.getFacesContext());
     }
 
     @Test
-    void testInit() {
-        when(proveedorDao.findAll()).thenReturn(new ArrayList<>());
-
-        try {
-            cut.init();
-        } catch (Exception e) {
-        }
-
-        // Se eliminó la aserción de nombreBean porque el código de CompraFrm no lo setea.
-        assertNotNull(cut.getDao());
-        assertNotNull(cut.getFacesContext());
-        assertNotNull(cut.getProveedoresDisponibles());
-        assertNotNull(cut.getEstadosDisponibles());
+    void testGetDao() {
+        assertEquals(compraDao, cut.getDao());
     }
 
     @Test
     void testNuevoRegistro() {
-        Compra nueva = cut.nuevoRegistro();
-        assertNotNull(nueva);
-        assertNotNull(nueva.getFecha());
+        Compra k = cut.nuevoRegistro();
+        assertNotNull(k);
+        assertNotNull(k.getFecha());
     }
 
     @Test
-    void testBuscarRegistroPorId_Exito() {
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        Compra result = cut.buscarRegistroPorId(1L);
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
+    void testBuscarRegistroPorId_Success() throws Exception {
+        when(compraDao.findById(mockCompraId)).thenReturn(mockCompra);
+        assertEquals(mockCompra, cut.buscarRegistroPorId(mockCompraId));
     }
 
     @Test
-    void testBuscarRegistroPorId_Fallo() {
-        assertNull(cut.buscarRegistroPorId(null));
-        assertNull(cut.buscarRegistroPorId("string"));
+    void testBuscarRegistroPorId_NotFoundOrInvalid() throws Exception {
+        when(compraDao.findById(anyLong())).thenReturn(null);
+        assertNull(cut.buscarRegistroPorId(999L));
+        assertNull(cut.buscarRegistroPorId("invalid"));
+    }
 
-        when(compraDao.findById(anyLong())).thenThrow(new RuntimeException("Error DB"));
-        assertNull(cut.buscarRegistroPorId(99L));
+    @Test
+    void testBuscarRegistroPorId_Exception() throws Exception {
+        when(compraDao.findById(mockCompraId)).thenThrow(new RuntimeException("DB Error"));
+        assertNull(cut.buscarRegistroPorId(mockCompraId));
     }
 
     @Test
     void testGetIdAsText() {
+        assertEquals(mockCompraId.toString(), cut.getIdAsText(mockCompra));
         assertNull(cut.getIdAsText(null));
-        assertNull(cut.getIdAsText(new Compra()));
-        assertEquals("1", cut.getIdAsText(mockCompra));
+        Compra c = new Compra();
+        assertNull(cut.getIdAsText(c));
     }
 
     @Test
-    void testGetIdByText() {
-        assertNull(cut.getIdByText(null));
-        assertNull(cut.getIdByText("abc"));
+    void testGetIdByText_Success() throws Exception {
+        doReturn(mockCompra).when(cut).buscarRegistroPorId(mockCompraId);
+        assertEquals(mockCompra, cut.getIdByText(mockCompraId.toString()));
+    }
 
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        Compra result = cut.getIdByText("1");
-        assertNotNull(result);
-        assertEquals(mockCompra, result);
+    @Test
+    void testGetIdByText_Invalid() {
+        assertNull(cut.getIdByText(null));
+        assertNull(cut.getIdByText("invalid-long"));
     }
 
     @Test
     void testEsNombreVacio() {
         assertTrue(cut.esNombreVacio(null));
-
-        Compra c = new Compra();
-        assertTrue(cut.esNombreVacio(c));
-
-        c.setIdProveedor(1);
-        assertFalse(cut.esNombreVacio(c));
+        assertTrue(cut.esNombreVacio(new Compra()));
+        assertFalse(cut.esNombreVacio(mockCompra));
     }
 
+    // ----------------------------------------------------------------------
+    // --- 2. PostConstruct y Getters ---
+    // ----------------------------------------------------------------------
+
     @Test
-    void testBtnGuardarHandler_RegistroNull() {
-        cut.registro = null;
-        cut.btnGuardarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("No hay registro")
-        ));
-        verify(compraDao, never()).crear(any());
+    void testInitAndGetters() {
+        when(proveedorDao.findAll()).thenReturn(Arrays.asList(mockProveedor));
+
+        cut.init();
+
+        List<Proveedor> resultProveedores = cut.getProveedoresDisponibles();
+        assertFalse(resultProveedores.isEmpty());
+
+        List<EstadoCompra> resultEstados = cut.getEstadosDisponibles();
+        assertEquals(EstadoCompra.values().length, resultEstados.size());
+
+        verify(cut, times(1)).inicializar();
     }
 
-    @Test
-    void testBtnGuardarHandler_ValidacionProveedor() {
-        cut.registro.setIdProveedor(null);
-        cut.btnGuardarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("Debe seleccionar un proveedor")
-        ));
-        verify(compraDao, never()).crear(any());
-    }
+    // ----------------------------------------------------------------------
+    // --- 3. Validación y Creación (crearEntidad) ---
+    // ----------------------------------------------------------------------
 
     @Test
-    void testBtnGuardarHandler_ValidacionEstado() {
-        cut.registro.setEstado(null);
-        cut.btnGuardarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("Debe seleccionar un estado")
-        ));
-        verify(compraDao, never()).crear(any());
-    }
+    void testCrearEntidad_Success() throws Exception {
+        when(proveedorDao.findById(mockProveedorId)).thenReturn(mockProveedor);
 
-    @Test
-    void testBtnGuardarHandler_ValidacionFecha() {
-        cut.registro.setFecha(null);
-        cut.btnGuardarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("La fecha es obligatoria")
-        ));
-        verify(compraDao, never()).crear(any());
-    }
-
-    @Test
-    void testBtnGuardarHandler_Crear_ProveedorNoExiste() {
-        setEstado(cut, "CREAR");
-        when(proveedorDao.findById(10)).thenReturn(null);
-
-        cut.btnGuardarHandler(null);
-
-        verify(compraDao, never()).crear(any());
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("El proveedor seleccionado no existe")
-        ));
-    }
-
-    @Test
-    void testBtnGuardarHandler_Crear_Exito() {
-        setEstado(cut, "CREAR");
-        when(proveedorDao.findById(10)).thenReturn(mockProveedor);
-
-        cut.btnGuardarHandler(null);
+        cut.crearEntidad(mockCompra);
 
         verify(compraDao).crear(mockCompra);
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_INFO && m.getDetail().contains("guardado correctamente")
-        ));
     }
 
     @Test
-    void testBtnGuardarHandler_Modificar_Exito() {
-        // ARRANGE
-        setEstado(cut, "MODIFICAR");
+    void testCrearEntidad_Validation_FechaNull() {
+        Compra invalid = new Compra();
+        invalid.setIdProveedor(mockProveedorId);
+        invalid.setEstado(EstadoCompra.CREADA.name());
 
-        // 1. Mockear la llamada de validación a CompraDAO
-        doNothing().when(compraDao).validarProveedor(10);
+        Exception exception = assertThrows(Exception.class, () -> cut.crearEntidad(invalid));
+        assertEquals("La fecha es obligatoria", exception.getMessage());
+    }
 
-        // 2. Mockear la carga del proveedor
-        when(proveedorDao.findById(10)).thenReturn(mockProveedor);
+    @Test
+    void testCrearEntidad_Validation_ProveedorNull() {
+        Compra invalid = new Compra();
+        invalid.setFecha(OffsetDateTime.now());
+        invalid.setEstado(EstadoCompra.CREADA.name());
 
-        // ACT
-        cut.btnGuardarHandler(null);
+        Exception exception = assertThrows(Exception.class, () -> cut.crearEntidad(invalid));
+        assertEquals("Debe seleccionar un proveedor", exception.getMessage());
+    }
 
-        // ASSERT
-        verify(compraDao).validarProveedor(10);
+    @Test
+    void testCrearEntidad_Validation_EstadoBlank() {
+        Compra invalid = new Compra();
+        invalid.setFecha(OffsetDateTime.now());
+        invalid.setIdProveedor(mockProveedorId);
+        invalid.setEstado(" ");
+
+        Exception exception = assertThrows(Exception.class, () -> cut.crearEntidad(invalid));
+        assertEquals("Debe seleccionar un estado", exception.getMessage());
+    }
+
+    @Test
+    void testCrearEntidad_Validation_ProveedorNotFound() {
+        when(proveedorDao.findById(anyInt())).thenReturn(null);
+
+        Exception exception = assertThrows(Exception.class, () -> cut.crearEntidad(mockCompra));
+        assertEquals("El proveedor seleccionado no existe.", exception.getMessage());
+    }
+
+    // ----------------------------------------------------------------------
+    // --- 4. Guardar Handler (btnGuardarHandler) ---
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testBtnGuardarHandler_ValidationFail_RegistroNull() {
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("No hay registro")));
+        verify(notificadorKardex, never()).notificarCambio(anyString());
+    }
+
+    @Test
+    void testBtnGuardarHandler_ValidationFail_ProveedorNull() throws Exception {
+        registroField.set(cut, new Compra());
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("proveedor")));
+    }
+
+    @Test
+    void testBtnGuardarHandler_ValidationFail_EstadoNull() throws Exception {
+        Compra c = new Compra();
+        c.setIdProveedor(mockProveedorId);
+        c.setEstado(null);
+        registroField.set(cut, c);
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("estado")));
+    }
+
+    @Test
+    void testBtnGuardarHandler_ValidationFail_FechaNull() throws Exception {
+        Compra c = new Compra();
+        c.setIdProveedor(mockProveedorId);
+        c.setEstado(EstadoCompra.CREADA.name());
+        c.setFecha(null);
+        registroField.set(cut, c);
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("fecha")));
+    }
+
+    // --- Sub-path CREAR ---
+    @Test
+    void testBtnGuardarHandler_Crear_Success() throws Exception {
+        estadoField.set(cut, ESTADO_CRUD.CREAR);
+        registroField.set(cut, mockCompra);
+
+        doNothing().when(cut).crearEntidad(mockCompra);
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(cut).crearEntidad(mockCompra);
+        verify(notificadorKardex).notificarCambio("RELOAD_TABLE");
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
+
+        // Verify cleanup
+        assertNull(registroField.get(cut));
+        assertEquals(ESTADO_CRUD.NADA, estadoField.get(cut));
+    }
+
+    // --- Sub-path MODIFICAR ---
+    @Test
+    void testBtnGuardarHandler_Modificar_Success() throws Exception {
+        estadoField.set(cut, ESTADO_CRUD.MODIFICAR);
+        registroField.set(cut, mockCompra);
+
+        when(proveedorDao.findById(mockProveedorId)).thenReturn(mockProveedor);
+
+        // 🔥 CORRECCIÓN CLAVE: Usar when().thenReturn() para métodos que no son void
+        when(compraDao.modificar(mockCompra)).thenReturn(mockCompra);
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(compraDao).validarProveedor(mockProveedorId);
+        verify(proveedorDao).findById(mockProveedorId);
         verify(compraDao).modificar(mockCompra);
-        verify(notificadorKardex).notificarCambio("RELOAD_TABLE"); // Verificar notificación
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_INFO && m.getDetail().contains("guardado correctamente")
-        ));
+        verify(notificadorKardex).notificarCambio("RELOAD_TABLE");
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
     }
 
     @Test
-    void testBtnGuardarHandler_Excepcion() {
-        setEstado(cut, "CREAR");
-        when(proveedorDao.findById(10)).thenReturn(mockProveedor);
-        doThrow(new RuntimeException("Error Grave", new IllegalArgumentException("Causa Raiz")))
-                .when(compraDao).crear(any());
+    void testBtnGuardarHandler_Exception() throws Exception {
+        estadoField.set(cut, ESTADO_CRUD.MODIFICAR);
+        registroField.set(cut, mockCompra);
 
-        cut.btnGuardarHandler(null);
+        when(proveedorDao.findById(mockProveedorId)).thenReturn(mockProveedor);
 
-        verify(facesContext).addMessage(isNull(), argThat(m ->
-                m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("Causa Raiz")
-        ));
+        // 🔥 CORRECCIÓN CLAVE: Usar when().thenThrow() para simular la excepción en un método no-void
+        when(compraDao.modificar(mockCompra)).thenThrow(new RuntimeException("Error BD"));
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("Error BD")));
     }
 
-    private void setEstado(CompraFrm bean, String nombreEstado) {
-        try {
-            java.lang.reflect.Field field = bean.getClass().getSuperclass().getDeclaredField("estado");
-            field.setAccessible(true);
-            Object[] enumConstants = field.getType().getEnumConstants();
-            for (Object constant : enumConstants) {
-                if (constant.toString().equals(nombreEstado)) {
-                    field.set(bean, constant);
-                    break;
-                }
-            }
-        } catch (Exception e) {
-        }
+    @Test
+    void testBtnGuardarHandler_Exception_WithNestedCause() throws Exception {
+        estadoField.set(cut, ESTADO_CRUD.CREAR);
+        registroField.set(cut, mockCompra);
+
+        Exception nestedException = new Exception("Nested constraint violation");
+        doThrow(new RuntimeException("Parent error", nestedException)).when(cut).crearEntidad(mockCompra);
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(),
+                argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("Nested constraint violation")));
+    }
+
+
+    // ----------------------------------------------------------------------
+    // --- 5. Cerrar Compra Handler (btnCerrarCompraHandler) ---
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testBtnCerrarCompraHandler_ValidationFail_RegistroNull() {
+        cut.btnCerrarCompraHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN && m.getDetail().contains("No hay registro seleccionado")));
+        verify(compraDao, never()).modificar(any());
+    }
+
+    @Test
+    void testBtnCerrarCompraHandler_Success() throws Exception {
+        registroField.set(cut, mockCompra);
+
+        // 🔥 CORRECCIÓN CLAVE: Usar when().thenReturn() para métodos que no son void
+        when(compraDao.modificar(mockCompra)).thenReturn(mockCompra);
+
+        cut.btnCerrarCompraHandler(actionEvent);
+
+        assertEquals("PAGADA", mockCompra.getEstado());
+
+        verify(compraDao).modificar(mockCompra);
+
+        verify(notificadorKardex).notificarCambio("RELOAD_TABLE");
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO && m.getDetail().contains("cerrada correctamente")));
+        assertNull(registroField.get(cut));
+    }
+
+    @Test
+    void testBtnCerrarCompraHandler_Exception() throws Exception {
+        registroField.set(cut, mockCompra);
+        // 🔥 CORRECCIÓN CLAVE: Usar when().thenThrow()
+        when(compraDao.modificar(mockCompra)).thenThrow(new RuntimeException("Cierre Fallido"));
+
+        cut.btnCerrarCompraHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR && m.getDetail().contains("No se pudo cerrar la compra")));
+    }
+
+    // ----------------------------------------------------------------------
+    // --- 6. Obtener Total Compra (getTotalCompra) ---
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testGetTotalCompra_Success() {
+        BigDecimal expectedTotal = new BigDecimal("150.75");
+        when(compraDetalleDAO.obtenerTotalCompra(mockCompraId)).thenReturn(expectedTotal);
+
+        BigDecimal result = cut.getTotalCompra(mockCompra);
+
+        assertEquals(expectedTotal, result);
+        verify(compraDetalleDAO).obtenerTotalCompra(mockCompraId);
+    }
+
+    @Test
+    void testGetTotalCompra_NullOrNoId() {
+        assertEquals(BigDecimal.ZERO, cut.getTotalCompra(null));
+
+        assertEquals(BigDecimal.ZERO, cut.getTotalCompra(new Compra()));
+
+        verify(compraDetalleDAO, never()).obtenerTotalCompra(anyLong());
     }
 }

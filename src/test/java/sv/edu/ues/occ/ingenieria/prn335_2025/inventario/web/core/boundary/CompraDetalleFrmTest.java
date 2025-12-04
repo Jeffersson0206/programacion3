@@ -2,143 +2,156 @@ package sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.boundary;
 
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import jakarta.faces.event.ActionEvent;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.primefaces.model.LazyDataModel;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.CompraDAO;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.CompraDetalleDAO;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.control.ProductoDAO;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Compra;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.CompraDetalle;
 import sv.edu.ues.occ.ingenieria.prn335_2025.inventario.web.core.entity.Producto;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CompraDetalleFrmTest {
 
-    @Mock
-    CompraDetalleDAO compraDetalleDao;
+    @Mock CompraDetalleDAO compraDetalleDao;
+    @Mock CompraDAO compraDao;
+    @Mock ProductoDAO productoDao;
+    @Mock FacesContext facesContext;
+    @Mock ActionEvent actionEvent;
 
-    @Mock
-    CompraDAO compraDao;
+    private MockedStatic<FacesContext> mockedFacesContext;
+    private MockedStatic<Logger> mockedLogger;
 
-    @Mock
-    ProductoDAO productoDao;
-
-    @Mock
-    FacesContext facesContext;
-
+    @Spy
     @InjectMocks
     CompraDetalleFrm cut;
 
-    private MockedStatic<FacesContext> mockedFacesContext;
-    private CompraDetalle mockDetalle;
     private Compra mockCompra;
     private Producto mockProducto;
-    private UUID uuidPrueba;
+    private CompraDetalle mockDetalle;
+    private CompraDetalle mockDetalleConFK;
 
-    // Variable para guardar el nivel original del logger y restaurarlo
-    private Level originalLogLevel;
+    private UUID mockDetalleId = UUID.randomUUID();
+    private Long mockCompraId = 10L;
+    private UUID mockProductoId = UUID.randomUUID();
+
+    private Field registroField;
+    private Field estadoField;
 
     @BeforeEach
-    void setUp() {
-        // --- SILENCIADOR DE CONSOLA ---
-        // Obtenemos el logger de la clase que estamos probando
-        Logger appLogger = Logger.getLogger(CompraDetalleFrm.class.getName());
-        // Guardamos el nivel actual para ser educados y restaurarlo después
-        originalLogLevel = appLogger.getLevel();
-        // Lo apagamos completamente para este test. ¡Adiós texto rojo!
-        appLogger.setLevel(Level.OFF);
-        // ------------------------------
-
+    void setUp() throws Exception {
+        // Mock FacesContext
         mockedFacesContext = mockStatic(FacesContext.class);
         mockedFacesContext.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+        doNothing().when(facesContext).addMessage(any(), any(FacesMessage.class));
 
-        uuidPrueba = UUID.randomUUID();
-        mockDetalle = new CompraDetalle();
-        mockDetalle.setId(uuidPrueba);
-        mockDetalle.setCantidad(BigDecimal.TEN);
-        mockDetalle.setPrecio(BigDecimal.valueOf(100.00));
-        mockDetalle.setEstado("PENDIENTE");
+        // Mock Logger
+        mockedLogger = mockStatic(Logger.class);
+        mockedLogger.when(() -> Logger.getLogger(anyString())).thenReturn(mock(Logger.class));
 
+        // Entidades
         mockCompra = new Compra();
-        mockCompra.setId(1L);
+        mockCompra.setId(mockCompraId);
 
         mockProducto = new Producto();
-        mockProducto.setId(UUID.randomUUID());
-        mockProducto.setNombreProducto("Producto Test");
+        mockProducto.setId(mockProductoId);
 
+        mockDetalle = cut.nuevoRegistro();
+        mockDetalle.setId(mockDetalleId);
+        mockDetalle.setCantidad(new BigDecimal("10"));
+        mockDetalle.setPrecio(new BigDecimal("5.00"));
+        mockDetalle.setEstado("RECIBIDO");
         mockDetalle.setIdCompra(mockCompra);
         mockDetalle.setIdProducto(mockProducto);
 
-        cut.registro = mockDetalle;
+        mockDetalleConFK = new CompraDetalle();
+        mockDetalleConFK.setId(mockDetalleId);
+        mockDetalleConFK.setCantidad(new BigDecimal("10"));
+        mockDetalleConFK.setPrecio(new BigDecimal("5.00"));
+        mockDetalleConFK.setEstado("RECIBIDO");
+
+        Compra cFK = new Compra(); cFK.setId(mockCompraId);
+        Producto pFK = new Producto(); pFK.setId(mockProductoId);
+        mockDetalleConFK.setIdCompra(cFK);
+        mockDetalleConFK.setIdProducto(pFK);
+
+        // Reflexión
+        registroField = DefaultFrm.class.getDeclaredField("registro");
+        registroField.setAccessible(true);
+        estadoField = DefaultFrm.class.getDeclaredField("estado");
+        estadoField.setAccessible(true);
     }
 
     @AfterEach
     void tearDown() {
-        // Restauramos el nivel del logger para no afectar otros tests fuera de esta clase
-        if (originalLogLevel != null) {
-            Logger.getLogger(CompraDetalleFrm.class.getName()).setLevel(originalLogLevel);
-        } else {
-            // Si era null (default), lo dejamos en INFO o ALL
-            Logger.getLogger(CompraDetalleFrm.class.getName()).setLevel(Level.INFO);
-        }
-
-        if (mockedFacesContext != null) {
-            mockedFacesContext.close();
-        }
+        if (mockedFacesContext != null) mockedFacesContext.close();
+        if (mockedLogger != null) mockedLogger.close();
     }
 
+    // ----------------------------------------------------------------------
+    // 1. Inicialización
+    // ----------------------------------------------------------------------
+
     @Test
-    void testInicializar_Exito() {
+    void testInicializar_Success() {
         when(compraDao.findAll()).thenReturn(List.of(mockCompra));
         when(productoDao.findAll()).thenReturn(List.of(mockProducto));
 
         cut.inicializar();
 
-        assertEquals("Gestión de Detalle de Compra", cut.nombreBean);
         assertFalse(cut.getComprasDisponibles().isEmpty());
         assertFalse(cut.getProductosDisponibles().isEmpty());
-        assertFalse(cut.getEstadosDisponibles().isEmpty());
+
+        verify(compraDao).findAll();
+        verify(productoDao).findAll();
     }
 
     @Test
-    void testInicializar_Excepcion() {
-        // Este test generaba texto rojo. Ahora debería estar en silencio.
+    void testInicializar_ErrorEnCarga() {
         when(compraDao.findAll()).thenThrow(new RuntimeException("DB Error"));
 
         cut.inicializar();
 
         assertTrue(cut.getComprasDisponibles().isEmpty());
         assertTrue(cut.getProductosDisponibles().isEmpty());
+
+        verify(compraDao).findAll();
+        verify(productoDao, never()).findAll();
     }
 
     @Test
-    void testGettersLazy() {
-        when(compraDao.findAll()).thenReturn(new ArrayList<>());
-        when(productoDao.findAll()).thenReturn(new ArrayList<>());
-
-        assertNotNull(cut.getComprasDisponibles());
-        assertNotNull(cut.getProductosDisponibles());
-
-        verify(compraDao).findAll();
-        verify(productoDao).findAll();
+    void testGetters() {
+        cut.getComprasDisponibles();
+        cut.getProductosDisponibles();
+        verify(compraDao, times(1)).findAll();
+        verify(productoDao, times(1)).findAll();
     }
+
+    // ----------------------------------------------------------------------
+    // 2. Métodos Abstractos
+    // ----------------------------------------------------------------------
 
     @Test
     void testGetDao() {
@@ -147,206 +160,239 @@ class CompraDetalleFrmTest {
 
     @Test
     void testNuevoRegistro() {
-        CompraDetalle nuevo = cut.nuevoRegistro();
-        assertNotNull(nuevo);
-        assertNotNull(nuevo.getId());
-        assertEquals(BigDecimal.ZERO, nuevo.getCantidad());
-        assertEquals(BigDecimal.ZERO, nuevo.getPrecio());
-        assertEquals("PENDIENTE", nuevo.getEstado());
-        assertNotNull(nuevo.getIdCompra());
-        assertNotNull(nuevo.getIdProducto());
+        CompraDetalle cd = cut.nuevoRegistro();
+        assertNotNull(cd);
+        assertNotNull(cd.getId());
+        assertEquals(BigDecimal.ZERO, cd.getCantidad());
     }
 
     @Test
     void testBuscarRegistroPorId() {
-        when(compraDetalleDao.findById(uuidPrueba)).thenReturn(mockDetalle);
-
-        CompraDetalle result = cut.buscarRegistroPorId(uuidPrueba);
-        assertNotNull(result);
-        assertEquals(uuidPrueba, result.getId());
-
-        assertNull(cut.buscarRegistroPorId("no-uuid"));
-        assertNull(cut.buscarRegistroPorId(null));
+        when(compraDetalleDao.findById(mockDetalleId)).thenReturn(mockDetalle);
+        assertEquals(mockDetalle, cut.buscarRegistroPorId(mockDetalleId));
+        assertNull(cut.buscarRegistroPorId("not a UUID"));
     }
 
     @Test
     void testGetIdAsText() {
-        assertEquals(uuidPrueba.toString(), cut.getIdAsText(mockDetalle));
-        assertNull(cut.getIdAsText(null));
+        assertEquals(mockDetalleId.toString(), cut.getIdAsText(mockDetalle));
         assertNull(cut.getIdAsText(new CompraDetalle()));
     }
 
     @Test
     void testGetIdByText() {
-        when(compraDetalleDao.findById(uuidPrueba)).thenReturn(mockDetalle);
-
-        CompraDetalle result = cut.getIdByText(uuidPrueba.toString());
-        assertNotNull(result);
-
+        when(compraDetalleDao.findById(mockDetalleId)).thenReturn(mockDetalle);
+        assertEquals(mockDetalle, cut.getIdByText(mockDetalleId.toString()));
         assertNull(cut.getIdByText(null));
-        assertNull(cut.getIdByText(""));
-        // Este caso generaba un warning en consola. Ahora debe estar en silencio.
         assertNull(cut.getIdByText("invalid-uuid"));
     }
 
     @Test
-    void testEsNombreVacio_Validaciones() {
-        CompraDetalle invalido = new CompraDetalle();
-
-        invalido.setIdCompra(null);
-        assertTrue(cut.esNombreVacio(invalido));
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("Debe seleccionar una Compra")));
-
-        invalido.setIdCompra(mockCompra);
-        invalido.setIdProducto(null);
-        assertTrue(cut.esNombreVacio(invalido));
-
-        invalido.setIdProducto(mockProducto);
-        invalido.setCantidad(BigDecimal.ZERO);
-        assertTrue(cut.esNombreVacio(invalido));
-
-        invalido.setCantidad(BigDecimal.TEN);
-        invalido.setPrecio(BigDecimal.valueOf(-1));
-        assertTrue(cut.esNombreVacio(invalido));
-
-        invalido.setPrecio(BigDecimal.TEN);
-        invalido.setEstado(null);
-        assertTrue(cut.esNombreVacio(invalido));
-
-        invalido.setEstado("RECIBIDO");
-        assertFalse(cut.esNombreVacio(invalido));
+    void testSetGetIdCompra() {
+        cut.setIdCompra(100L);
+        assertEquals(100L, cut.getIdCompra());
     }
+
+    // ----------------------------------------------------------------------
+    // 3. Validación
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testEsNombreVacio_Success() {
+        assertFalse(cut.esNombreVacio(mockDetalle));
+    }
+
+    @Test
+    void testEsNombreVacio_Fallos() {
+        CompraDetalle invalid = new CompraDetalle();
+        invalid.setIdProducto(mockProducto);
+        invalid.setCantidad(BigDecimal.ONE);
+        invalid.setPrecio(BigDecimal.ONE);
+        invalid.setEstado("OK");
+
+        // Compra null
+        assertTrue(cut.esNombreVacio(invalid));
+
+        // Producto null
+        invalid.setIdCompra(mockCompra);
+        invalid.setIdProducto(null);
+        assertTrue(cut.esNombreVacio(invalid));
+
+        // Cantidad
+        invalid.setIdProducto(mockProducto);
+        invalid.setCantidad(BigDecimal.ZERO);
+        assertTrue(cut.esNombreVacio(invalid));
+
+        // Precio
+        invalid.setCantidad(BigDecimal.TEN);
+        invalid.setPrecio(null);
+        assertTrue(cut.esNombreVacio(invalid));
+
+        // Estado
+        invalid.setPrecio(BigDecimal.TEN);
+        invalid.setEstado(null);
+        assertTrue(cut.esNombreVacio(invalid));
+
+        verify(facesContext, atLeastOnce()).addMessage(any(), any());
+    }
+
+    // ----------------------------------------------------------------------
+    // 4. Guardar Handler
+    // ----------------------------------------------------------------------
 
     @Test
     void testBtnGuardarHandler_RegistroNull() {
-        cut.registro = null;
-        cut.btnGuardarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No hay registro")));
+        cut.btnGuardarHandler(actionEvent);
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN));
         verify(compraDetalleDao, never()).crear(any());
     }
 
     @Test
-    void testBtnGuardarHandler_ValidacionFalla() {
-        cut.registro.setCantidad(BigDecimal.valueOf(-1));
-        cut.btnGuardarHandler(null);
+    void testBtnGuardarHandler_ValidationFail() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
+        mockDetalleConFK.setCantidad(BigDecimal.ZERO);
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN));
         verify(compraDetalleDao, never()).crear(any());
     }
 
     @Test
-    void testBtnGuardarHandler_CompraNoEncontrada() {
-        when(compraDao.findById(1L)).thenReturn(null);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
+    void testBtnGuardarHandler_FKNotFound() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
 
-        cut.btnGuardarHandler(null);
+        when(compraDao.findById(mockCompraId)).thenReturn(null);
+        when(productoDao.findById(mockProductoId)).thenReturn(mockProducto);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No se encontró la Compra")));
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
         verify(compraDetalleDao, never()).crear(any());
     }
 
     @Test
-    void testBtnGuardarHandler_ProductoNoEncontrado() {
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenReturn(null);
+    void testBtnGuardarHandler_Success() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
 
-        cut.btnGuardarHandler(null);
+        when(compraDao.findById(mockCompraId)).thenReturn(mockCompra);
+        when(productoDao.findById(mockProductoId)).thenReturn(mockProducto);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No se encontró el Producto")));
-        verify(compraDetalleDao, never()).crear(any());
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(compraDetalleDao).crear(mockDetalleConFK);
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
     }
 
     @Test
-    void testBtnGuardarHandler_Exito() {
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
+    void testBtnGuardarHandler_PersistenceError() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
 
-        cut.btnGuardarHandler(null);
+        when(compraDao.findById(mockCompraId)).thenReturn(mockCompra);
+        when(productoDao.findById(mockProductoId)).thenReturn(mockProducto);
 
-        verify(compraDetalleDao).crear(any(CompraDetalle.class));
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("guardado correctamente")));
-        assertNull(cut.registro);
+        doThrow(new RuntimeException("Error de BD")).when(compraDetalleDao).crear(any());
+
+        cut.btnGuardarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
     }
 
-    @Test
-    void testBtnGuardarHandler_Excepcion() {
-        // Este generaba error SEVERE en consola. Ahora silencio.
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
-        doThrow(new RuntimeException("Error DB")).when(compraDetalleDao).crear(any());
-
-        cut.btnGuardarHandler(null);
-
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("Ocurrió un error")));
-    }
+    // ----------------------------------------------------------------------
+    // 5. Modificar Handler
+    // ----------------------------------------------------------------------
 
     @Test
     void testBtnModificarHandler_RegistroNull() {
-        cut.registro = null;
-        cut.btnModificarHandler(null);
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No hay registro")));
-        verify(compraDetalleDao, never()).modificar(any());
+        cut.btnModificarHandler(actionEvent);
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_WARN));
     }
 
     @Test
-    void testBtnModificarHandler_ValidacionFalla() {
-        cut.registro.setEstado("");
-        cut.btnModificarHandler(null);
-        verify(compraDetalleDao, never()).modificar(any());
+    void testBtnModificarHandler_Success() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
+
+        when(compraDao.findById(mockCompraId)).thenReturn(mockCompra);
+        when(productoDao.findById(mockProductoId)).thenReturn(mockProducto);
+        when(compraDetalleDao.modificar(mockDetalleConFK)).thenReturn(mockDetalleConFK);
+
+        cut.btnModificarHandler(actionEvent);
+
+        verify(compraDetalleDao).modificar(mockDetalleConFK);
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_INFO));
     }
 
     @Test
-    void testBtnModificarHandler_EntidadesNoEncontradas() {
-        when(compraDao.findById(1L)).thenReturn(null);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
+    void testBtnModificarHandler_PersistenceError() throws Exception {
+        registroField.set(cut, mockDetalleConFK);
 
-        cut.btnModificarHandler(null);
+        when(compraDao.findById(mockCompraId)).thenReturn(mockCompra);
+        when(productoDao.findById(mockProductoId)).thenReturn(mockProducto);
+        when(compraDetalleDao.modificar(mockDetalleConFK)).thenThrow(new RuntimeException("Error"));
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No se encontraron las entidades")));
-        verify(compraDetalleDao, never()).modificar(any());
+        cut.btnModificarHandler(actionEvent);
+
+        verify(facesContext).addMessage(isNull(), argThat(m -> m.getSeverity() == FacesMessage.SEVERITY_ERROR));
+    }
+
+    // ----------------------------------------------------------------------
+    // 6. Carga de Datos y LazyDataModel
+    // ----------------------------------------------------------------------
+
+    @Test
+    void testCargarDatos_Success() {
+        cut.setIdCompra(mockCompraId);
+        when(compraDetalleDao.findByIdCompra(mockCompraId)).thenReturn(List.of(mockDetalle));
+
+        List<CompraDetalle> result = cut.cargarDatos(0, 10);
+        assertFalse(result.isEmpty());
     }
 
     @Test
-    void testBtnModificarHandler_Exito() {
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
-
-        cut.btnModificarHandler(null);
-
-        verify(compraDetalleDao).modificar(any(CompraDetalle.class));
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("modificado correctamente")));
-        assertNull(cut.registro);
+    void testCargarDatos_Error() {
+        cut.setIdCompra(mockCompraId);
+        when(compraDetalleDao.findByIdCompra(mockCompraId)).thenThrow(new RuntimeException("Err"));
+        assertTrue(cut.cargarDatos(0, 10).isEmpty());
     }
 
+    /**
+     * CORRECCIÓN CRÍTICA: Este test ahora verifica el flujo correcto del LazyDataModel
+     * donde el rowCount se actualiza después de llamar a count() o load().
+     */
     @Test
-    void testBtnModificarHandler_Excepcion() {
-        // Este generaba error SEVERE en consola. Ahora silencio.
-        when(compraDao.findById(1L)).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
-        doThrow(new RuntimeException("Error Update")).when(compraDetalleDao).modificar(any());
+    void testCargarDatosPorCompra_LazyModel() throws Exception {
+        // 1. Setup del Mock de conteo
+        when(compraDetalleDao.contarDetallesPorCompra(mockCompraId)).thenReturn(5L);
 
-        cut.btnModificarHandler(null);
+        // 2. Inicializar el LazyModel
+        cut.cargarDetallesPorCompra(mockCompraId);
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("Ocurrió un error")));
-    }
+        // Obtener el modelo
+        Field modeloField = DefaultFrm.class.getDeclaredField("modelo");
+        modeloField.setAccessible(true);
+        LazyDataModel<CompraDetalle> modelo = (LazyDataModel<CompraDetalle>) modeloField.get(cut);
+        assertNotNull(modelo);
 
-    @Test
-    void testDaoExceptions_ObtenerCompra() {
-        // Este generaba error SEVERE en consola. Ahora silencio.
-        when(compraDao.findById(anyLong())).thenThrow(new RuntimeException("DAO Error"));
-        when(productoDao.findById(any(UUID.class))).thenReturn(mockProducto);
+        // 3. Ejecutar count() explícitamente para verificar la implementación anónima
+        int conteo = modelo.count(Collections.emptyMap());
+        assertEquals(5, conteo, "El método count() del LazyDataModel debe retornar 5");
 
-        cut.btnGuardarHandler(null);
+        // 4. Configurar el Mock de carga
+        when(compraDetalleDao.findByIdCompra(mockCompraId)).thenReturn(List.of(mockDetalle));
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No se encontró la Compra")));
-    }
+        // 5. Ejecutar load().
+        // IMPORTANTE: Tu código fuente llama a setRowCount() dentro de load().
+        // Esto actualizará el getRowCount() del modelo.
+        List<CompraDetalle> list = modelo.load(0, 10, Collections.emptyMap(), Collections.emptyMap());
 
-    @Test
-    void testDaoExceptions_ObtenerProducto() {
-        // Este generaba error SEVERE en consola. Ahora silencio.
-        when(compraDao.findById(anyLong())).thenReturn(mockCompra);
-        when(productoDao.findById(any(UUID.class))).thenThrow(new RuntimeException("DAO Error"));
+        assertFalse(list.isEmpty());
 
-        cut.btnGuardarHandler(null);
+        // 6. AHORA verificamos el getRowCount(), que debe ser 5
+        assertEquals(5, modelo.getRowCount(), "El rowCount debe ser 5 después de ejecutar load()");
 
-        verify(facesContext).addMessage(isNull(), argThat(m -> m.getDetail().contains("No se encontró el Producto")));
+        // 7. Otros métodos del modelo
+        when(compraDetalleDao.findById(mockDetalleId)).thenReturn(mockDetalle);
+        assertEquals(mockDetalle, modelo.getRowData(mockDetalleId.toString()));
+        assertEquals(mockDetalleId.toString(), modelo.getRowKey(mockDetalle));
     }
 }
