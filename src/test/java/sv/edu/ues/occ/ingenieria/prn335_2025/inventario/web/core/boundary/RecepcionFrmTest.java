@@ -334,4 +334,4 @@ class RecepcionFrmTest {
         assertEquals(compraDetalleFrm, result);
         verify(compraDetalleFrm, never()).setIdCompra(any());
     }
-}
+}// End of File
