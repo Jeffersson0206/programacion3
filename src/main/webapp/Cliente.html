@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente Inventario - Tipo Almacén</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 8px 15px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #000;
+            padding: 8px 15px;
+            font-size: 0.9em;
+        }
+
+        .btn-edit:hover {
+            background: #e0a800;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🏢 Sistema de Inventario</h1>
+        <p class="subtitle">Gestión de Tipos de Almacén</p>
+    </header>
+
+    <div class="content">
+        <div id="alertContainer"></div>
+
+        <div class="form-section">
+            <h2 id="formTitle">➕ Crear Nuevo Tipo de Almacén</h2>
+            <form id="tipoAlmacenForm">
+                <input type="hidden" id="idTipoAlmacen" />
+
+                <div class="form-group">
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" required placeholder="Ej: Almacén Refrigerado" />
+                </div>
+
+                <div class="form-group">
+                    <label for="activo">Estado:</label>
+                    <select id="activo" required>
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="observaciones">Observaciones:</label>
+                    <input type="text" id="observaciones" placeholder="Descripción adicional (opcional)" />
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn-primary" id="btnSubmit">💾 Guardar</button>
+                    <button type="button" class="btn-secondary" onclick="resetForm()">🔄 Limpiar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-section">
+            <h2>📋 Lista de Tipos de Almacén</h2>
+            <div id="loadingContainer" class="loading" style="display:none;">
+                Cargando datos...
+            </div>
+            <div id="tableContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:9080/JPQL2-1.0-SNAPSHOT/resources/v1/tipo_almacen';
+    let editingId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+
+        document.getElementById('tipoAlmacenForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (editingId) {
+                updateTipoAlmacen();
+            } else {
+                createTipoAlmacen();
+            }
+        });
+    });
+
+    function showAlert(message, type) {
+        const alertContainer = document.getElementById('alertContainer');
+        alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+    }
+
+    async function loadData() {
+        const loadingContainer = document.getElementById('loadingContainer');
+        const tableContainer = document.getElementById('tableContainer');
+        loadingContainer.style.display = 'block';
+
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Error al cargar datos');
+            const data = await response.json();
+
+            if (data.length === 0) {
+                tableContainer.innerHTML = '<div class="empty-state">📭 No hay tipos de almacén registrados</div>';
+            } else {
+                renderTable(data);
+            }
+        } catch (error) {
+            showAlert('❌ Error al cargar datos: ' + error.message, 'error');
+            tableContainer.innerHTML = '<div class="empty-state">⚠️ Error al cargar datos</div>';
+        } finally {
+            loadingContainer.style.display = 'none';
+        }
+    }
+
+    function renderTable(data) {
+        const tableContainer = document.getElementById('tableContainer');
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.forEach(item => {
+            const statusClass = item.activo ? 'status-active' : 'status-inactive';
+            const statusText = item.activo ? '✓ Activo' : '✗ Inactivo';
+
+            html += `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.nombre || '-'}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td>${item.observaciones || '-'}</td>
+                    <td class="actions">
+                        <button class="btn-edit" onclick="editTipoAlmacen(${item.id})">✏️ Editar</button>
+                        <button class="btn-danger" onclick="deleteTipoAlmacen(${item.id})">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        tableContainer.innerHTML = html;
+    }
+
+    async function createTipoAlmacen() {
+        const data = {
+            nombre: document.getElementById('nombre').value,
+            activo: document.getElementById('activo').value === 'true',
+            observaciones: document.getElementById('observaciones').value || null
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error('Error al crear registro');
+
+            showAlert('✅ Tipo de almacén creado exitosamente', 'success');
+            resetForm();
+            loadData();
+        } catch (error) {
+            showAlert('❌ Error al crear: ' + error.message, 'error');
+        }
+    }
+
+    async function editTipoAlmacen(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            if (!response.ok) throw new Error('Error al obtener datos');
+            const data = await response.json();
+
+            document.getElementById('idTipoAlmacen').value = data.id;
+            document.getElementById('nombre').value = data.nombre;
+            document.getElementById('activo').value = data.activo.toString();
+            document.getElementById('observaciones').value = data.observaciones || '';
+
+            document.getElementById('formTitle').textContent = '✏️ Editar Tipo de Almacén';
+            document.getElementById('btnSubmit').textContent = '💾 Actualizar';
+            editingId = id;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (error) {
+            showAlert('❌ Error al cargar datos para editar: ' + error.message, 'error');
+        }
+    }
+
+    async function updateTipoAlmacen() {
+        const data = {
+            id: parseInt(document.getElementById('idTipoAlmacen').value),
+            nombre: document.getElementById('nombre').value,
+            activo: document.getElementById('activo').value === 'true',
+            observaciones: document.getElementById('observaciones').value || null
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/${editingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error('Error al actualizar registro');
+
+            showAlert('✅ Tipo de almacén actualizado exitosamente', 'success');
+            resetForm();
+            loadData();
+        } catch (error) {
+            showAlert('❌ Error al actualizar: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteTipoAlmacen(id) {
+        if (!confirm('¿Está seguro que desea eliminar este tipo de almacén?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Error al eliminar registro');
+
+            showAlert('✅ Tipo de almacén eliminado exitosamente', 'success');
+            loadData();
+        } catch (error) {
+            showAlert('❌ Error al eliminar: ' + error.message, 'error');
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('tipoAlmacenForm').reset();
+        document.getElementById('idTipoAlmacen').value = '';
+        document.getElementById('formTitle').textContent = '➕ Crear Nuevo Tipo de Almacén';
+        document.getElementById('btnSubmit').textContent = '💾 Guardar';
+        editingId = null;
+    }
+</script>
+</body>
+</html>
